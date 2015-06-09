@@ -3,13 +3,14 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 
-
 var db = require('./app/config');
 var Users = require('./app/collections/users');
 var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+
+var auth = false;
 
 var app = express();
 
@@ -25,19 +26,31 @@ app.use(express.static(__dirname + '/public'));
 
 app.get('/', 
 function(req, res) {
-  res.render('index');
+  if(auth){
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/create', 
 function(req, res) {
-  res.render('index');
+  if(auth){
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/links', 
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  });
+  if(auth){ 
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.post('/links', 
@@ -77,8 +90,53 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.get('/signup', function(req, res){
+  res.render('signup');
+});
 
+app.post('/signup', function(req, res){
+  db.knex('users').insert({username: req.body.username, password: req.body.password});
+});
 
+//app.post for signup
+  //insert data into user table
+
+app.get('/login', function(req, res){
+  res.render('login');
+  // auth = true; //initiate session
+});
+
+//app.post for login
+app.post('/login', function(req, res){
+  console.log(req.body);
+  db.knex('users').where({username: req.body.username, password: req.body.password}).then(function(row){
+    if(row[0]){
+      auth = true;
+      res.redirect('/');      
+    }
+  });
+
+  // db.knex('users').where('username', '=', req.body.username).then(function( usr ){
+  //   user = usr;
+  //   db.knex('users').where('password', '=', req.body.password).select('id').then(function( pswd ){
+  //     pass = pswd;
+  //     console.log("user: " + user + " || pass: " + pass);
+  //     if(user === pass){
+  //       res.redirect('/index');
+  //       console.log("successful login");
+  //     }
+  //   });
+  // });
+  
+  
+  
+});
+  //check posted data against user table data
+
+app.get('/logout', function(req, res){
+  res.render('login');
+  auth = false;  //terminate session
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
